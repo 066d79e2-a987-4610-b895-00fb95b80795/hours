@@ -1,13 +1,11 @@
 use chrono::{Date, Datelike, Duration, Local, Month, TimeZone};
 use num_traits::cast::FromPrimitive;
 
-use crate::util;
+use crate::{report::Report, util};
 
 pub struct Timesheet {
     entries: Vec<(Date<Local>, Duration)>,
 }
-
-pub struct Report(pub String);
 
 impl Timesheet {
     pub fn parse_report(report: &Report) -> Self {
@@ -80,6 +78,13 @@ fn format_date(d: &Date<Local>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_empty_report() {
+        let timesheet = Timesheet::parse_report(&Report("".to_owned()));
+
+        assert_eq!(timesheet.entries.len(), 0);
+    }
 
     #[test]
     fn test_timesheet_reporting() {
