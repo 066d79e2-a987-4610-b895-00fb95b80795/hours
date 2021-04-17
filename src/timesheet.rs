@@ -7,10 +7,12 @@ pub struct Timesheet {
     entries: Vec<(Date<Local>, Duration)>,
 }
 
+pub struct Report(pub String);
+
 impl Timesheet {
-    pub fn parse_report(report: &str) -> Self {
+    pub fn parse_report(report: &Report) -> Self {
         let mut entries = Vec::new();
-        for line in report.split("\n") {
+        for line in report.0.split("\n") {
             let line = line.trim();
             if line == "" || line.to_lowercase().starts_with("total") {
                 continue;
@@ -23,7 +25,7 @@ impl Timesheet {
         Self { entries }
     }
 
-    pub fn generate_report(&self) -> String {
+    pub fn generate_report(&self) -> Report {
         let mut lines = Vec::new();
         let mut total = Duration::seconds(0);
         for &(date, duration) in self.entries.iter() {
@@ -43,10 +45,19 @@ impl Timesheet {
                 total = Duration::seconds(0);
             }
         }
-        return lines.join("\n");
+        return Report(lines.join("\n"));
     }
 
-    pub fn add_hours(date: Date<Local>, duration: Duration) {}
+    pub fn add_hours(&mut self, date: &Date<Local>, duration: &Duration) {
+        match self.entries.binary_search_by(|&(d, _)| d.cmp(&date)) {
+            Ok(i) => {
+                self.entries[i].1 = self.entries[i].1 + *duration;
+            }
+            Err(i) => {
+                self.entries.insert(i, (date.clone(), duration.clone()));
+            }
+        };
+    }
 }
 
 fn is_last_day_of_month(date: &Date<Local>) -> bool {
@@ -64,12 +75,6 @@ fn parse_date(s: &str) -> Date<Local> {
 
 fn format_date(d: &Date<Local>) -> String {
     format!("{:0>2}.{:0>2}.{}", d.day(), d.month(), d.year())
-}
-
-impl ToString for Timesheet {
-    fn to_string(&self) -> String {
-        todo!()
-    }
 }
 
 #[cfg(test)]
@@ -141,10 +146,67 @@ Total for March 2021 06:16:01
         ];
 
         for (report, expected_timesheet) in cases.into_iter() {
-            let timesheet = Timesheet::parse_report(report);
+            let timesheet = Timesheet::parse_report(&Report(report.to_owned()));
 
             assert_eq!(timesheet.entries, expected_timesheet.entries);
-            assert_eq!(timesheet.generate_report().trim(), report.trim());
+            assert_eq!(timesheet.generate_report().0.trim(), report.trim());
         }
+    }
+
+    #[test]
+    fn test_timesheet_add_hours_existig_date() {
+        let mut timesheet = create_sample_timesheet();
+
+        timesheet.add_hours(
+            &Local.ymd(2021, 3, 11),
+            &(Duration::hours(2) + Duration::minutes(12)),
+        );
+
+        let report = timesheet.generate_report();
+        assert_eq!(
+            report.0,
+            "01.03.2021 01:00:00
+02.03.2021 01:14:00
+03.03.2021 02:00:01
+11.03.2021 03:13:00
+31.03.2021 01:01:00
+Total for March 2021 08:28:01"
+        );
+    }
+
+    #[test]
+    fn test_timesheet_add_hours_new_date() {
+        let mut timesheet = create_sample_timesheet();
+
+        timesheet.add_hours(
+            &Local.ymd(2021, 3, 12),
+            &(Duration::hours(2) + Duration::minutes(12)),
+        );
+
+        let report = timesheet.generate_report();
+        assert_eq!(
+            report.0,
+            "01.03.2021 01:00:00
+02.03.2021 01:14:00
+03.03.2021 02:00:01
+11.03.2021 01:01:00
+12.03.2021 02:12:00
+31.03.2021 01:01:00
+Total for March 2021 08:28:01"
+        );
+    }
+
+    fn create_sample_timesheet() -> Timesheet {
+        Timesheet::parse_report(&Report(
+            "
+01.03.2021 01:00:00
+02.03.2021 01:14:00
+03.03.2021 02:00:01
+11.03.2021 01:01:00
+31.03.2021 01:01:00
+Total for March 2021 06:16:01
+                "
+            .to_owned(),
+        ))
     }
 }
