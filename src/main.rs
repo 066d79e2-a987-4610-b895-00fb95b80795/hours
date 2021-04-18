@@ -6,26 +6,57 @@ use std::{
 };
 
 use chrono::{Duration, Local};
+use gist::GistClient;
 use report::Report;
+use settings::Settings;
 use timesheet::Timesheet;
 
 mod display;
 mod gist;
 mod report;
+mod settings;
 mod timesheet;
 mod util;
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     Report::commit_backup();
+    sync_gist().await;
+
     let start = Instant::now();
     let ctrlc_receiver = register_ctrlc_handler();
-    let (handle, cancel_sender) = write_backups_in_background(start);
+    let (handle, backup_cancel_sender) = write_backups_in_background(start);
     while ctrlc_receiver.try_recv().is_err() {
         let duration = Duration::from_std(start.elapsed()).unwrap();
         display::draw_duration(duration);
     }
-    cancel_sender.send(Cancel).unwrap();
+    println!();
+    backup_cancel_sender.send(Cancel).unwrap();
     handle.join().unwrap();
+
+    Report::commit_backup();
+    sync_gist().await;
+}
+
+async fn sync_gist() {
+    let report = Report::load();
+    let settings = Settings::load();
+    let gist_client = GistClient::new(settings.api_key.clone(), settings.gist_id.clone());
+    let res = gist_client.get().await;
+    if report.0.trim() != res.report.0.trim() {
+        if let Some(last_updated) = Report::last_updated() {
+            if last_updated < res.last_updated {
+                println!(
+                    "Updating local file from gist. New content: {}.",
+                    res.report.0
+                );
+                res.report.save();
+            } else {
+                println!("Updating gist from local file. New content: {}.", report.0);
+                gist_client.update(&report).await;
+            }
+        }
+    }
 }
 
 fn register_ctrlc_handler() -> Receiver<()> {
@@ -56,7 +87,6 @@ fn write_backups_in_background(start: Instant) -> (thread::JoinHandle<()>, Sende
             timesheet.add_hours(&today, &Duration::from_std(start.elapsed()).unwrap());
             timesheet.generate_report().save_backup();
         }
-        Report::commit_backup();
     });
     (handle, sender)
 }

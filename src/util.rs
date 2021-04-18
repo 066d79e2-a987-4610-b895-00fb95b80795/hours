@@ -1,3 +1,5 @@
+use std::{env, path::PathBuf};
+
 use chrono::Duration;
 
 pub fn parse_duration(s: &str) -> Duration {
@@ -15,6 +17,10 @@ pub fn format_duration(duration: Duration) -> String {
     let hours = mins / 60;
     mins -= hours * 60;
     format!("{:0>2}:{:0>2}:{:0>2}", hours, mins, secs)
+}
+
+pub fn home_dir() -> PathBuf {
+    PathBuf::from(env::var("HOME").unwrap())
 }
 
 #[cfg(test)]
