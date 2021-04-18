@@ -26,10 +26,12 @@ async fn main() {
     let start = Instant::now();
     let ctrlc_receiver = register_ctrlc_handler();
     let (handle, backup_cancel_sender) = write_backups_in_background(start);
+    display::hide_cursor();
     while ctrlc_receiver.try_recv().is_err() {
         let duration = Duration::from_std(start.elapsed()).unwrap();
         display::draw_duration(duration);
     }
+    display::show_cursor();
     println!();
     backup_cancel_sender.send(Cancel).unwrap();
     handle.join().unwrap();
