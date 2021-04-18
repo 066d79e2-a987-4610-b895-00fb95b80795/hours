@@ -2,6 +2,16 @@
 
 `hours` is a Rust program for tracking hours worked and making billing easy.
 
+### Building
+
+You can use `cargo` to build this project:
+```bash
+cargo build --release
+```
+The output binary ends up in `./target/release/hours`.
+
+There is also a `Makefile`. Running `make install` will build the project and copy the output binary to `~/bin/`.
+
 ### Configuration
 
 You need to create a `~/.config/hours.yaml` file with the following contents:
