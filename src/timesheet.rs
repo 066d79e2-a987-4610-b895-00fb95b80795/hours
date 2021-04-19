@@ -26,16 +26,16 @@ impl Timesheet {
     pub fn generate_report(&self) -> Report {
         let mut lines = Vec::new();
         let mut total = Duration::seconds(0);
-        for &(date, duration) in self.entries.iter() {
+        for (i, &(date, duration)) in self.entries.iter().enumerate() {
             total = total + duration;
             lines.push(format!(
                 "{} {}",
                 format_date(&date),
                 util::format_duration(duration)
             ));
-            if is_last_day_of_month(&date) {
+            if i == self.entries.len() - 1 || date.month() != self.entries[i + 1].0.month() {
                 lines.push(format!(
-                    "Total for {} {} {}",
+                    "Total for {} {} {}\n",
                     Month::from_u32(date.month()).unwrap().name(),
                     date.year(),
                     util::format_duration(total)
@@ -63,11 +63,6 @@ impl Timesheet {
     fn binary_search(&self, date: &Date<Local>) -> Result<usize, usize> {
         self.entries.binary_search_by(|&(d, _)| d.cmp(&date))
     }
-}
-
-fn is_last_day_of_month(date: &Date<Local>) -> bool {
-    let succ = date.succ();
-    succ.month() != date.month()
 }
 
 fn parse_date(s: &str) -> Date<Local> {
@@ -98,10 +93,100 @@ mod tests {
         let cases = vec![
             (
                 "
+03.02.2021 05:00:12
+Total for February 2021 05:00:12
+",
+                Timesheet {
+                    entries: vec![(
+                        Local.ymd(2021, 2, 3),
+                        Duration::hours(5) + Duration::seconds(12),
+                    )],
+                },
+            ),
+            (
+                "
+01.01.2021 07:00:12
+Total for January 2021 07:00:12
+
 01.02.2021 07:00:12
 02.02.2021 09:17:12
 03.02.2021 05:00:12
 11.02.2021 05:01:13
+Total for February 2021 26:18:49
+",
+                Timesheet {
+                    entries: vec![
+                        (
+                            Local.ymd(2021, 1, 1),
+                            Duration::hours(7) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 1),
+                            Duration::hours(7) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 2),
+                            Duration::hours(9) + Duration::minutes(17) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 3),
+                            Duration::hours(5) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 11),
+                            Duration::hours(5) + Duration::minutes(1) + Duration::seconds(13),
+                        ),
+                    ],
+                },
+            ),
+            (
+                "
+01.01.2021 07:00:12
+04.01.2021 07:00:12
+Total for January 2021 14:00:24
+
+01.02.2021 07:00:12
+02.02.2021 09:17:12
+03.02.2021 05:00:12
+11.02.2021 05:01:13
+Total for February 2021 26:18:49
+",
+                Timesheet {
+                    entries: vec![
+                        (
+                            Local.ymd(2021, 1, 1),
+                            Duration::hours(7) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 1, 4),
+                            Duration::hours(7) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 1),
+                            Duration::hours(7) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 2),
+                            Duration::hours(9) + Duration::minutes(17) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 3),
+                            Duration::hours(5) + Duration::seconds(12),
+                        ),
+                        (
+                            Local.ymd(2021, 2, 11),
+                            Duration::hours(5) + Duration::minutes(1) + Duration::seconds(13),
+                        ),
+                    ],
+                },
+            ),
+            (
+                "
+01.02.2021 07:00:12
+02.02.2021 09:17:12
+03.02.2021 05:00:12
+11.02.2021 05:01:13
+Total for February 2021 26:18:49
 ",
                 Timesheet {
                     entries: vec![
@@ -157,7 +242,9 @@ Total for March 2021 06:16:01
             ),
         ];
 
-        for (report, expected_timesheet) in cases.into_iter() {
+        for (i, (report, expected_timesheet)) in cases.into_iter().enumerate() {
+            println!("{}", i);
+
             let timesheet = Timesheet::parse_report(&Report(report.to_owned()));
 
             assert_eq!(timesheet.entries, expected_timesheet.entries);
@@ -182,7 +269,8 @@ Total for March 2021 06:16:01
 03.03.2021 02:00:01
 11.03.2021 03:13:00
 31.03.2021 01:01:00
-Total for March 2021 08:28:01"
+Total for March 2021 08:28:01
+"
         );
     }
 
@@ -204,7 +292,8 @@ Total for March 2021 08:28:01"
 11.03.2021 01:01:00
 12.03.2021 02:12:00
 31.03.2021 01:01:00
-Total for March 2021 08:28:01"
+Total for March 2021 08:28:01
+"
         );
     }
 
