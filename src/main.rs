@@ -50,12 +50,15 @@ async fn sync_gist() {
         if let Some(last_updated) = Report::last_updated() {
             if last_updated < res.last_updated {
                 println!(
-                    "Updating local file from gist. New content: {}.",
-                    res.report.0
+                    "Updating local file from gist. New content: \n{}",
+                    res.report.0.trim()
                 );
                 res.report.save();
             } else {
-                println!("Updating gist from local file. New content: {}.", report.0);
+                println!(
+                    "Updating gist from local file. New content: \n{}",
+                    report.0.trim()
+                );
                 gist_client.update(&report).await;
             }
         }
