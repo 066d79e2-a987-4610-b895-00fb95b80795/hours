@@ -24,11 +24,12 @@ async fn main() {
     sync_gist().await;
 
     let start = Instant::now();
+    let duration_for_today = load_timesheet().get_hours(&Local::today());
     let ctrlc_receiver = register_ctrlc_handler();
     let (handle, backup_cancel_sender) = write_backups_in_background(start);
     display::hide_cursor();
     while ctrlc_receiver.try_recv().is_err() {
-        let duration = Duration::from_std(start.elapsed()).unwrap();
+        let duration = Duration::from_std(start.elapsed()).unwrap() + duration_for_today;
         display::draw_duration(duration);
     }
     display::show_cursor();
@@ -84,11 +85,15 @@ fn write_backups_in_background(start: Instant) -> (thread::JoinHandle<()>, Sende
         let today = Local::today();
         while receiver.try_recv().is_err() {
             thread::sleep(time::Duration::from_secs(3));
-            let report = Report::load();
-            let mut timesheet = Timesheet::parse_report(&report);
+            let mut timesheet = load_timesheet();
             timesheet.add_hours(&today, &Duration::from_std(start.elapsed()).unwrap());
             timesheet.generate_report().save_backup();
         }
     });
     (handle, sender)
+}
+
+fn load_timesheet() -> Timesheet {
+    let report = Report::load();
+    Timesheet::parse_report(&report)
 }

@@ -47,14 +47,21 @@ impl Timesheet {
     }
 
     pub fn add_hours(&mut self, date: &Date<Local>, duration: &Duration) {
-        match self.entries.binary_search_by(|&(d, _)| d.cmp(&date)) {
-            Ok(i) => {
-                self.entries[i].1 = self.entries[i].1 + *duration;
-            }
-            Err(i) => {
-                self.entries.insert(i, (date.clone(), duration.clone()));
-            }
+        match self.binary_search(date) {
+            Ok(i) => self.entries[i].1 = self.entries[i].1 + *duration,
+            Err(i) => self.entries.insert(i, (date.clone(), duration.clone())),
         };
+    }
+
+    pub fn get_hours(&self, date: &Date<Local>) -> Duration {
+        match self.binary_search(date) {
+            Ok(i) => self.entries[i].1,
+            Err(_) => Duration::seconds(0),
+        }
+    }
+
+    fn binary_search(&self, date: &Date<Local>) -> Result<usize, usize> {
+        self.entries.binary_search_by(|&(d, _)| d.cmp(&date))
     }
 }
 
