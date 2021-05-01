@@ -5,7 +5,7 @@ use std::{
     time::{self, Instant},
 };
 
-use chrono::{Duration, Local};
+use chrono::{DateTime, Duration, FixedOffset, Local};
 use gist::GistClient;
 use report::Report;
 use settings::Settings;
@@ -47,21 +47,27 @@ async fn sync_gist() {
     let gist_client = GistClient::new(settings.api_key.clone(), settings.gist_id.clone());
     let res = gist_client.get().await;
     if report.0.trim() != res.report.0.trim() {
-        if let Some(last_updated) = Report::last_updated() {
-            if last_updated < res.last_updated {
-                println!(
-                    "Updating local file from gist. New content: \n{}",
-                    res.report.0.trim()
-                );
-                res.report.save();
-            } else {
-                println!(
-                    "Updating gist from local file. New content: \n{}",
-                    report.0.trim()
-                );
-                gist_client.update(&report).await;
-            }
+        if should_update_local_file_from_gist(res.last_updated) {
+            println!(
+                "Updating local file from gist. New content:\n{}",
+                res.report.0.trim()
+            );
+            res.report.save();
+        } else {
+            println!(
+                "Updating gist from local file. New content:\n{}",
+                report.0.trim()
+            );
+            gist_client.update(&report).await;
         }
+    }
+}
+
+fn should_update_local_file_from_gist(gist_last_updated: DateTime<FixedOffset>) -> bool {
+    match Report::last_updated() {
+        None => true, // Local file does not exist
+        Some(last_updated) if last_updated < gist_last_updated => true,
+        _ => false,
     }
 }
 
