@@ -1,7 +1,7 @@
 use chrono::{Date, Datelike, Duration, Local, Month, TimeZone};
 use num_traits::cast::FromPrimitive;
 
-use crate::{report::Report, util};
+use crate::{remaining_work::RemainingWork, report::Report, util};
 
 pub struct Timesheet {
     entries: Vec<(Date<Local>, Duration)>,
@@ -60,8 +60,25 @@ impl Timesheet {
         }
     }
 
+    pub fn remaining_work(&self) -> Option<RemainingWork> {
+        self.entries.last().map(|&(last, _)| {
+            RemainingWork::new(
+                last,
+                Duration::hours(160) - self.hours_worked_in_month(last.month()),
+            )
+        })
+    }
+
     fn binary_search(&self, date: &Date<Local>) -> Result<usize, usize> {
         self.entries.binary_search_by(|&(d, _)| d.cmp(&date))
+    }
+
+    fn hours_worked_in_month(&self, month: u32) -> Duration {
+        self.entries
+            .iter()
+            .rev()
+            .take_while(|e| e.0.month() == month)
+            .fold(Duration::zero(), |acc, e| acc + e.1)
     }
 }
 

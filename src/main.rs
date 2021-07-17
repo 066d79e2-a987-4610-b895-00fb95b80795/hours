@@ -11,12 +11,12 @@ use settings::Settings;
 use timesheet::Timesheet;
 
 mod gist;
+mod remaining_work;
 mod report;
 mod settings;
 mod terminal;
 mod timesheet;
 mod util;
-mod working_days;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -38,6 +38,7 @@ async fn main() {
 
     Report::commit_backup();
     sync_gist().await;
+    show_remaining_work();
 }
 
 async fn sync_gist() {
@@ -89,4 +90,15 @@ fn write_backups_in_background(start: Instant) -> (thread::JoinHandle<()>, Sende
 fn load_timesheet() -> Timesheet {
     let report = Report::load();
     Timesheet::parse_report(&report)
+}
+
+fn show_remaining_work() {
+    let timesheet = load_timesheet();
+    if let Some(work) = timesheet.remaining_work() {
+        println!(
+            "{} days remaining this month, which is about {} work per day.",
+            work.num_working_days(),
+            util::format_duration(work.time_per_day())
+        );
+    }
 }

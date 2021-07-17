@@ -1,19 +1,23 @@
 use chrono::{Date, Datelike, Duration, Local, Weekday};
 
-pub struct WorkDays {
+pub struct RemainingWork {
     date: Date<Local>,
-    remaining_work: Duration,
+    remaining_time: Duration,
 }
 
-impl WorkDays {
-    pub fn new(date: Date<Local>, remaining_work: Duration) -> Self {
+impl RemainingWork {
+    pub fn new(date: Date<Local>, remaining_time: Duration) -> Self {
         Self {
             date,
-            remaining_work,
+            remaining_time: if remaining_time < Duration::zero() {
+                Duration::zero()
+            } else {
+                remaining_time
+            },
         }
     }
 
-    pub fn remaining_days_in_month(&self) -> u8 {
+    pub fn num_working_days(&self) -> u8 {
         let month = self.date.month();
         let mut date = self.date;
         let mut remaining_days = 0;
@@ -26,8 +30,8 @@ impl WorkDays {
         remaining_days
     }
 
-    pub fn remaining_work_per_day(&self) -> Duration {
-        self.remaining_work / self.remaining_days_in_month() as i32
+    pub fn time_per_day(&self) -> Duration {
+        self.remaining_time / self.num_working_days() as i32
     }
 }
 
@@ -45,7 +49,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_remaining_days() {
+    fn test_remaining_work() {
         let cases = vec![
             (
                 Local.ymd(2021, 7, 17),
@@ -61,14 +65,14 @@ mod tests {
             ),
         ];
 
-        for (date, work, expected_remaining_days, expected_remaining_work_per_day) in cases {
-            let work_days = WorkDays::new(date, work);
+        for (date, remaining_time, expected_num_days, expected_time_per_day) in cases {
+            let remaining_work = RemainingWork::new(date, remaining_time);
 
-            let remaining_days = work_days.remaining_days_in_month();
-            let remaining_work = work_days.remaining_work_per_day();
+            let num_days = remaining_work.num_working_days();
+            let time_per_day = remaining_work.time_per_day();
 
-            assert_eq!(remaining_days, expected_remaining_days);
-            assert_eq!(remaining_work, expected_remaining_work_per_day);
+            assert_eq!(num_days, expected_num_days);
+            assert_eq!(time_per_day, expected_time_per_day);
         }
     }
 }
