@@ -17,6 +17,7 @@ mod report;
 mod settings;
 mod timesheet;
 mod util;
+mod working_days;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
