@@ -1,6 +1,5 @@
 use std::{
-    process,
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{self, Sender},
     thread,
     time::{self, Instant},
 };
@@ -11,10 +10,10 @@ use report::Report;
 use settings::Settings;
 use timesheet::Timesheet;
 
-mod display;
 mod gist;
 mod report;
 mod settings;
+mod terminal;
 mod timesheet;
 mod util;
 mod working_days;
@@ -26,14 +25,13 @@ async fn main() {
 
     let start = Instant::now();
     let duration_for_today = load_timesheet().get_hours(&Local::today());
-    let ctrlc_receiver = register_ctrlc_handler();
     let (handle, backup_cancel_sender) = write_backups_in_background(start);
-    display::hide_cursor();
-    while ctrlc_receiver.try_recv().is_err() {
+    terminal::init();
+    while !terminal::ctrlc() {
         let duration = Duration::from_std(start.elapsed()).unwrap() + duration_for_today;
-        display::draw_duration(duration);
+        terminal::draw_duration(duration);
     }
-    display::show_cursor();
+    terminal::quit();
     println!();
     backup_cancel_sender.send(Cancel).unwrap();
     handle.join().unwrap();
@@ -70,21 +68,6 @@ fn should_update_local_file_from_gist(gist_last_updated: DateTime<FixedOffset>) 
         Some(last_updated) if last_updated < gist_last_updated => true,
         _ => false,
     }
-}
-
-fn register_ctrlc_handler() -> Receiver<()> {
-    let mut quit = false;
-    let (sender, receiver) = mpsc::channel();
-    ctrlc::set_handler(move || {
-        if quit {
-            process::exit(1);
-        }
-
-        sender.send(()).unwrap();
-        quit = true;
-    })
-    .unwrap();
-    receiver
 }
 
 struct Cancel;
