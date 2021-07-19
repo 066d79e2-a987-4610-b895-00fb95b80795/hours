@@ -270,7 +270,7 @@ Total for March 2021 06:16:01
     }
 
     #[test]
-    fn test_timesheet_add_hours_existig_date() {
+    fn test_timesheet_add_hours_existing_date() {
         let mut timesheet = create_sample_timesheet();
 
         timesheet.add_hours(

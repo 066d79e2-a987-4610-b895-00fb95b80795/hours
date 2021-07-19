@@ -6,6 +6,7 @@ use std::{
 
 use chrono::{DateTime, Duration, FixedOffset, Local};
 use gist::GistClient;
+use remaining_work::IncludeToday;
 use report::Report;
 use settings::Settings;
 use timesheet::Timesheet;
@@ -96,9 +97,14 @@ fn show_remaining_work() {
     let timesheet = load_timesheet();
     if let Some(work) = timesheet.remaining_work() {
         println!(
-            "{} days remaining this month, which is about {} work per day.",
-            work.num_working_days(),
-            util::format_duration(work.time_per_day())
+            "Including today, {} days remaining this month, which is about {} work per day.",
+            work.num_working_days(IncludeToday::Yes),
+            util::format_duration(work.time_per_day(IncludeToday::Yes))
+        );
+        println!(
+            "Not including today, {} days remaining this month, which is about {} work per day.",
+            work.num_working_days(IncludeToday::No),
+            util::format_duration(work.time_per_day(IncludeToday::No))
         );
     }
 }
